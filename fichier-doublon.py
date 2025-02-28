@@ -3,6 +3,7 @@ import hashlib
 import datetime
 from collections import defaultdict
 import argparse
+import shutil
 
 # 1. Classe File pour représenter un fichier
 class File:
@@ -123,7 +124,7 @@ def find_duplicates_in_rep2(rep1_files, rep2_files):
                     break
     return duplicates
 
-# 7. Nouvelle fonction pour supprimer les doublons dans rep2 avec confirmation
+# 7. Fonction pour supprimer les doublons dans rep2 avec confirmation
 def delete_duplicates_in_rep2_with_confirmation(rep1_files, rep2_files):
     """Supprime les fichiers en doublons dans rep2 après confirmation de l'utilisateur."""
     duplicates = find_duplicates_in_rep2(rep1_files, rep2_files)
@@ -146,20 +147,53 @@ def delete_duplicates_in_rep2_with_confirmation(rep1_files, rep2_files):
     else:
         print("Suppression annulée.")
 
-# 8. Programme principal avec la nouvelle option
+# 8. Nouvelle fonction pour rapatrier les fichiers de rep2 vers rep1
+def rapatriate_files(rep1, rep2):
+    """Rapatriement des fichiers de rep2 vers rep1 avec gestion des doublons."""
+    # Créer un dictionnaire des fichiers de rep1 (clé = nom, valeur = objet File)
+    rep1_files = {file.name: file for file in get_all_files(rep1)}
+    # Lister tous les fichiers de rep2
+    rep2_files = get_all_files(rep2)
+
+    for rep2_file in rep2_files:
+        rep2_file_name = rep2_file.name
+        rep2_file_path = rep2_file.path
+        dest_path = os.path.join(rep1, rep2_file_name)
+
+        if rep2_file_name not in rep1_files:
+            # Fichier absent de rep1 : on le copie
+            shutil.copy2(rep2_file_path, dest_path)
+            print(f"Fichier copié : {rep2_file_name}")
+        else:
+            # Fichier présent dans les deux : comparer les dates
+            rep1_file = rep1_files[rep2_file_name]
+            if rep2_file.last_modified > rep1_file.last_modified:
+                shutil.copy2(rep2_file_path, dest_path)
+                print(f"Fichier mis à jour : {rep2_file_name}")
+            else:
+                print(f"Fichier ignoré (plus ancien) : {rep2_file_name}")
+
+# 9. Programme principal avec la nouvelle option de rapatriement
 def main():
     """Point d’entrée du programme, gère les arguments et lance les analyses."""
-    parser = argparse.ArgumentParser(description="Analyse de fichiers dans des répertoires")
+    parser = argparse.ArgumentParser(description="Analyse et gestion de fichiers dans des répertoires")
     parser.add_argument("directory", nargs='?', help="Chemin du répertoire à analyser")
-    parser.add_argument("rep2", nargs='?', help="Chemin du second répertoire pour la comparaison")
+    parser.add_argument("rep2", nargs='?', help="Chemin du second répertoire pour la comparaison ou le rapatriement")
     parser.add_argument("--duplicates", action="store_true", help="Détecter les fichiers en doublons dans un répertoire")
     parser.add_argument("--size-by-type", action="store_true", help="Calculer la somme des tailles par type de fichier")
     parser.add_argument("--compare-rep", action="store_true", help="Comparer deux répertoires pour trouver les doublons dans rep2")
     parser.add_argument("--delete-duplicates", action="store_true", help="Supprimer les doublons dans rep2 par rapport à rep1 après confirmation")
+    parser.add_argument("--rapatriate", action="store_true", help="Rapatrier les fichiers de rep2 vers rep1 avec gestion des doublons")
 
     args = parser.parse_args()
 
-    if args.delete_duplicates:
+    if args.rapatriate:
+        if not args.directory or not args.rep2:
+            print("Usage pour --rapatriate : python script.py rep1 rep2 --rapatriate")
+            return
+        print(f"Rapatriement de {args.rep2} vers {args.directory}")
+        rapatriate_files(args.directory, args.rep2)
+    elif args.delete_duplicates:
         if not args.directory or not args.rep2:
             print("Usage pour --delete-duplicates : python script.py rep1 rep2 --delete-duplicates")
             return
@@ -183,7 +217,7 @@ def main():
             print("Aucun fichier en doublon dans rep2 par rapport à rep1.")
     else:
         if not args.directory:
-            print("Usage : python script.py <répertoire> [--duplicates] [--size-by-type] [--compare-rep rep2] [--delete-duplicates rep2]")
+            print("Usage : python script.py <répertoire> [--duplicates] [--size-by-type] [--compare-rep rep2] [--delete-duplicates rep2] [--rapatriate rep2]")
             return
         print(f"Analyse du répertoire : {args.directory}")
         file_list = get_all_files(args.directory)
