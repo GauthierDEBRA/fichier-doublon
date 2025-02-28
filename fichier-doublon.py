@@ -123,7 +123,30 @@ def find_duplicates_in_rep2(rep1_files, rep2_files):
                     break
     return duplicates
 
-# 7. Programme principal
+# 7. Nouvelle fonction pour supprimer les doublons dans rep2 avec confirmation
+def delete_duplicates_in_rep2_with_confirmation(rep1_files, rep2_files):
+    """Supprime les fichiers en doublons dans rep2 après confirmation de l'utilisateur."""
+    duplicates = find_duplicates_in_rep2(rep1_files, rep2_files)
+    if not duplicates:
+        print("Aucun fichier en doublon trouvé dans rep2.")
+        return
+
+    print("\nLes fichiers suivants seront supprimés dans rep2 :")
+    for file in duplicates:
+        print(f"  - {file.path} (taille: {file.size} octets)")
+
+    confirmation = input("\nVoulez-vous vraiment supprimer ces fichiers ? (oui/non) : ").strip().lower()
+    if confirmation == 'oui':
+        for file in duplicates:
+            try:
+                os.remove(file.path)
+                print(f"Fichier supprimé : {file.path}")
+            except Exception as e:
+                print(f"Erreur lors de la suppression de {file.path}: {e}")
+    else:
+        print("Suppression annulée.")
+
+# 8. Programme principal avec la nouvelle option
 def main():
     """Point d’entrée du programme, gère les arguments et lance les analyses."""
     parser = argparse.ArgumentParser(description="Analyse de fichiers dans des répertoires")
@@ -132,10 +155,19 @@ def main():
     parser.add_argument("--duplicates", action="store_true", help="Détecter les fichiers en doublons dans un répertoire")
     parser.add_argument("--size-by-type", action="store_true", help="Calculer la somme des tailles par type de fichier")
     parser.add_argument("--compare-rep", action="store_true", help="Comparer deux répertoires pour trouver les doublons dans rep2")
-    
+    parser.add_argument("--delete-duplicates", action="store_true", help="Supprimer les doublons dans rep2 par rapport à rep1 après confirmation")
+
     args = parser.parse_args()
 
-    if args.compare_rep:
+    if args.delete_duplicates:
+        if not args.directory or not args.rep2:
+            print("Usage pour --delete-duplicates : python script.py rep1 rep2 --delete-duplicates")
+            return
+        print(f"Comparaison entre {args.directory} et {args.rep2} pour suppression des doublons dans rep2")
+        rep1_files = get_all_files(args.directory)
+        rep2_files = get_all_files(args.rep2)
+        delete_duplicates_in_rep2_with_confirmation(rep1_files, rep2_files)
+    elif args.compare_rep:
         if not args.directory or not args.rep2:
             print("Usage pour --compare-rep : python script.py rep1 rep2 --compare-rep")
             return
@@ -151,7 +183,7 @@ def main():
             print("Aucun fichier en doublon dans rep2 par rapport à rep1.")
     else:
         if not args.directory:
-            print("Usage : python script.py <répertoire> [--duplicates] [--size-by-type] [--compare-rep rep2]")
+            print("Usage : python script.py <répertoire> [--duplicates] [--size-by-type] [--compare-rep rep2] [--delete-duplicates rep2]")
             return
         print(f"Analyse du répertoire : {args.directory}")
         file_list = get_all_files(args.directory)
